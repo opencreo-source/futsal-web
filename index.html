@@ -102,6 +102,14 @@
 
     <div id="tab-match" class="tabcontent">
       <div class="card" id="matchCard">불러오는 중...</div>
+      <div class="card admin-only hidden">
+        <h2>다음 매치 등록</h2>
+        <input id="matchDate" placeholder="날짜 (예: 2026-10-10)">
+        <input id="matchTime" placeholder="시간 (예: 19:00)">
+        <input id="matchLocation" placeholder="장소">
+        <button onclick="addMatch()">등록</button>
+        <div class="msg" id="matchMsg"></div>
+      </div>
     </div>
 
     <div id="tab-mvp" class="tabcontent hidden">
@@ -133,15 +141,6 @@
     </div>
 
     <div id="tab-admin" class="tabcontent hidden">
-      <div class="card">
-        <h2>다음 매치 등록</h2>
-        <input id="matchDate" placeholder="날짜 (예: 2026-10-10)">
-        <input id="matchTime" placeholder="시간 (예: 19:00)">
-        <input id="matchLocation" placeholder="장소">
-        <button onclick="addMatch()">등록</button>
-        <div class="msg" id="matchMsg"></div>
-      </div>
-
       <div class="card">
         <h2>회원 포인트 수정</h2>
         <input id="ptName" placeholder="회원 이름">
