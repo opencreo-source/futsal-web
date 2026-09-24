@@ -97,7 +97,8 @@
       <div class="tab active" data-tab="match">다음 매치</div>
       <div class="tab" data-tab="mvp">명예의 전당</div>
       <div class="tab" data-tab="video">경기 영상</div>
-      <div class="tab admin-only hidden" data-tab="admin">관리자</div>
+      <div class="tab admin-only hidden" data-tab="members">회원관리</div>
+      <div class="tab admin-only hidden" data-tab="team">팀 매칭</div>
     </div>
 
     <div id="tab-match" class="tabcontent">
@@ -140,7 +141,7 @@
       </div>
     </div>
 
-    <div id="tab-admin" class="tabcontent hidden">
+    <div id="tab-members" class="tabcontent hidden">
       <div class="card">
         <h2>회원 포인트 수정</h2>
         <input id="ptName" placeholder="회원 이름">
@@ -173,7 +174,9 @@
         <button class="danger" onclick="deleteMember()">삭제</button>
         <div class="msg" id="delMsg"></div>
       </div>
+    </div>
 
+    <div id="tab-team" class="tabcontent hidden">
       <div class="card">
         <h2>팀 자동 배정</h2>
         <div id="teamCheckList" class="checklist">불러오는 중...</div>
