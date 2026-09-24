@@ -214,15 +214,16 @@ async function doLogin() {
 
     if (currentUser.isAdmin) {
       const pw = prompt("관리자님이시네요! 관리자 비밀번호를 입력해주세요 (이후엔 다시 묻지 않아요)");
-      if (pw) {
+      if (pw && pw.trim()) {
+        const cleanPw = pw.trim();
         const verifyRes = await fetch(API + "/admin/verify", {
           method: "POST",
           headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ password: pw })
+          body: JSON.stringify({ password: cleanPw })
         });
         const verifyData = await verifyRes.json();
         if (verifyData.success) {
-          adminPassword = pw;
+          adminPassword = cleanPw;
         } else {
           alert("비밀번호가 틀렸습니다. 일반 회원으로 로그인됩니다.");
           currentUser.isAdmin = false;
@@ -297,7 +298,8 @@ async function loadMvp() {
       $("mvpList").innerHTML = '<div class="center">등록된 MVP가 없습니다</div>';
       return;
     }
-    $("mvpList").innerHTML = data.records.map(r =>
+    const sorted = data.records.slice().sort((a, b) => b.year - a.year);
+    $("mvpList").innerHTML = sorted.map(r =>
       `<div class="row"><span>${r.year}년</span><span>${r.name}</span></div>`
     ).join("");
   } catch (e) {
