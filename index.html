@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OMT</title>
+<style>
+  :root {
+    --bg: #0f1720;
+    --card: #1a2530;
+    --text: #eef2f6;
+    --sub: #9aa7b2;
+    --accent: #3ddc84;
+    --danger: #ff6b6b;
+    --border: #2a3742;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100%;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  h2 { font-size: 16px; margin: 0 0 10px; color: var(--sub); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  input, select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #10181f;
+    color: var(--text);
+    font-size: 15px;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #05130a;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  button.secondary { background: #2a3742; color: var(--text); }
+  button.danger { background: var(--danger); color: #2a0000; }
+  .msg { font-size: 13px; color: var(--danger); margin-top: 6px; min-height: 16px; }
+  .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .row:last-child { border-bottom: none; }
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #223; font-size: 12px; color: var(--sub); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; }
+  .tab { padding: 8px 14px; border-radius: 999px; background: var(--card); color: var(--sub); font-size: 13px; white-space: nowrap; cursor: pointer; border: 1px solid var(--border); }
+  .tab.active { background: var(--accent); color: #05130a; border-color: var(--accent); font-weight: 700; }
+  .hidden { display: none !important; }
+  a.videolink { color: var(--accent); word-break: break-all; font-size: 14px; }
+  .center { text-align: center; color: var(--sub); font-size: 13px; padding: 20px 0; }
+  .checklist label { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 로그인 화면 -->
+  <div id="loginView">
+    <h1>⚽ OMT</h1>
+    <div class="card">
+      <h2>로그인</h2>
+      <input id="loginName" placeholder="이름">
+      <input id="loginBirth" placeholder="생년월일 (예: 050930)">
+      <button onclick="doLogin()">로그인</button>
+      <div class="msg" id="loginMsg"></div>
+    </div>
+  </div>
+
+  <!-- 메인 화면 -->
+  <div id="mainView" class="hidden">
+    <h1>⚽ OMT</h1>
+    <div class="card" id="userCard"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="match">다음 매치</div>
+      <div class="tab" data-tab="mvp">명예의 전당</div>
+      <div class="tab" data-tab="video">경기 영상</div>
+      <div class="tab admin-only hidden" data-tab="admin">관리자</div>
+    </div>
+
+    <div id="tab-match" class="tabcontent">
+      <div class="card" id="matchCard">불러오는 중...</div>
+    </div>
+
+    <div id="tab-mvp" class="tabcontent hidden">
+      <div class="card">
+        <h2>역대 MVP</h2>
+        <div id="mvpList">불러오는 중...</div>
+      </div>
+      <div class="card admin-only hidden">
+        <h2>MVP 등록</h2>
+        <input id="mvpYear" placeholder="연도 (예: 2026)">
+        <input id="mvpName" placeholder="회원 이름">
+        <button onclick="addMvp()">등록</button>
+        <div class="msg" id="mvpMsg"></div>
+      </div>
+    </div>
+
+    <div id="tab-video" class="tabcontent hidden">
+      <div class="card">
+        <h2>최근 경기 영상</h2>
+        <div id="videoList">불러오는 중...</div>
+      </div>
+      <div class="card admin-only hidden">
+        <h2>영상 링크 등록</h2>
+        <input id="videoDate" placeholder="날짜 (예: 2026-10-05)">
+        <input id="videoUrl" placeholder="유튜브 링크">
+        <button onclick="addVideo()">등록</button>
+        <div class="msg" id="videoMsg"></div>
+      </div>
+    </div>
+
+    <div id="tab-admin" class="tabcontent hidden">
+      <div class="card">
+        <h2>회원 포인트 수정</h2>
+        <input id="ptName" placeholder="회원 이름">
+        <input id="ptValue" placeholder="새 포인트">
+        <button onclick="updatePoints()">수정</button>
+        <div class="msg" id="ptMsg"></div>
+      </div>
+
+      <div class="card">
+        <h2>회원 추가</h2>
+        <input id="addName" placeholder="이름">
+        <input id="addBirth" placeholder="생년월일 (모르면 000000)">
+        <input id="addSkill" placeholder="실력 레벨 (1~10)">
+        <button onclick="addMember()">추가</button>
+        <div class="msg" id="addMsg"></div>
+      </div>
+
+      <div class="card">
+        <h2>팀 자동 배정</h2>
+        <div id="teamCheckList" class="checklist">불러오는 중...</div>
+        <button onclick="assignTeam()">팀 배정하기</button>
+        <div id="teamResult" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <button class="secondary" onclick="logout()">로그아웃</button>
+  </div>
+</div>
+
+<script>
+const API = "https://futsal-server-huxw.onrender.com";
+let currentUser = null;
+
+function $(id) { return document.getElementById(id); }
+
+async function doLogin() {
+  const name = $("loginName").value.trim();
+  const birthdate = $("loginBirth").value.trim();
+  $("loginMsg").textContent = "확인 중... (서버가 잠들어있으면 최대 1분 걸릴 수 있어요)";
+  try {
+    const res = await fetch(API + "/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, birthdate })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      $("loginMsg").textContent = "이름 또는 생년월일이 일치하지 않습니다.";
+      return;
+    }
+    currentUser = data;
+    $("loginMsg").textContent = "";
+    showMain();
+  } catch (e) {
+    $("loginMsg").textContent = "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.";
+  }
+}
+
+function logout() {
+  currentUser = null;
+  $("mainView").classList.add("hidden");
+  $("loginView").classList.remove("hidden");
+  $("loginName").value = "";
+  $("loginBirth").value = "";
+}
+
+function showMain() {
+  $("loginView").classList.add("hidden");
+  $("mainView").classList.remove("hidden");
+  $("userCard").innerHTML = `
+    <div class="row"><span>이름</span><span>${currentUser.name}${currentUser.isAdmin ? ' <span class="chip">관리자</span>' : ''}</span></div>
+    <div class="row"><span>내 포인트</span><span>${currentUser.points}</span></div>
+    <div class="row"><span>실력 레벨</span><span>${currentUser.skillLevel}</span></div>
+  `;
+  document.querySelectorAll(".admin-only").forEach(el => {
+    if (currentUser.isAdmin) el.classList.remove("hidden");
+    else el.classList.add("hidden");
+  });
+  loadNextMatch();
+  loadMvp();
+  loadVideos();
+  if (currentUser.isAdmin) loadMemberChecklist();
+}
+
+// 탭 전환
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    document.querySelectorAll(".tabcontent").forEach(c => c.classList.add("hidden"));
+    $("tab-" + tab.dataset.tab).classList.remove("hidden");
+  });
+});
+
+async function loadNextMatch() {
+  try {
+    const res = await fetch(API + "/nextmatch");
+    const data = await res.json();
+    $("matchCard").innerHTML = `
+      <div class="row"><span>날짜</span><span>${data.date}</span></div>
+      <div class="row"><span>시간</span><span>${data.time}</span></div>
+      <div class="row"><span>장소</span><span>${data.location}</span></div>
+    `;
+  } catch (e) {
+    $("matchCard").innerHTML = '<div class="center">불러오기 실패</div>';
+  }
+}
+
+async function loadMvp() {
+  try {
+    const res = await fetch(API + "/mvp");
+    const data = await res.json();
+    if (!data.records || data.records.length === 0) {
+      $("mvpList").innerHTML = '<div class="center">등록된 MVP가 없습니다</div>';
+      return;
+    }
+    $("mvpList").innerHTML = data.records.map(r =>
+      `<div class="row"><span>${r.year}년</span><span>${r.name}</span></div>`
+    ).join("");
+  } catch (e) {
+    $("mvpList").innerHTML = '<div class="center">불러오기 실패</div>';
+  }
+}
+
+async function addMvp() {
+  const year = parseInt($("mvpYear").value.trim());
+  const name = $("mvpName").value.trim();
+  const password = prompt("관리자 비밀번호를 입력하세요");
+  if (!password) return;
+  try {
+    const res = await fetch(API + "/mvp/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, year, name })
+    });
+    const data = await res.json();
+    $("mvpMsg").textContent = data.success ? "등록 완료!" : "실패: " + (data.message || "비밀번호 확인");
+    if (data.success) { $("mvpYear").value = ""; $("mvpName").value = ""; loadMvp(); }
+  } catch (e) {
+    $("mvpMsg").textContent = "서버 오류";
+  }
+}
+
+async function loadVideos() {
+  try {
+    const res = await fetch(API + "/videos");
+    const data = await res.json();
+    if (!data.videos || data.videos.length === 0) {
+      $("videoList").innerHTML = '<div class="center">등록된 영상이 없습니다</div>';
+      return;
+    }
+    $("videoList").innerHTML = data.videos.map(v =>
+      `<div class="row"><span>${v.date}</span><a class="videolink" href="${v.url}" target="_blank">보기</a></div>`
+    ).join("");
+  } catch (e) {
+    $("videoList").innerHTML = '<div class="center">불러오기 실패</div>';
+  }
+}
+
+async function addVideo() {
+  const date = $("videoDate").value.trim();
+  const url = $("videoUrl").value.trim();
+  const password = prompt("관리자 비밀번호를 입력하세요");
+  if (!password) return;
+  try {
+    const res = await fetch(API + "/videos/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, date, url })
+    });
+    const data = await res.json();
+    $("videoMsg").textContent = data.success ? "등록 완료!" : "실패";
+    if (data.success) { $("videoDate").value = ""; $("videoUrl").value = ""; loadVideos(); }
+  } catch (e) {
+    $("videoMsg").textContent = "서버 오류";
+  }
+}
+
+async function updatePoints() {
+  const name = $("ptName").value.trim();
+  const points = parseInt($("ptValue").value.trim());
+  const password = prompt("관리자 비밀번호를 입력하세요");
+  if (!password) return;
+  try {
+    const res = await fetch(API + "/member/points", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, name, points })
+    });
+    const data = await res.json();
+    $("ptMsg").textContent = data.success ? "수정 완료!" : "실패: " + (data.message || "");
+  } catch (e) {
+    $("ptMsg").textContent = "서버 오류";
+  }
+}
+
+async function addMember() {
+  const name = $("addName").value.trim();
+  const birthdate = $("addBirth").value.trim();
+  const skillLevel = parseInt($("addSkill").value.trim());
+  const password = prompt("관리자 비밀번호를 입력하세요");
+  if (!password) return;
+  try {
+    const res = await fetch(API + "/member/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, name, birthdate, skillLevel })
+    });
+    const data = await res.json();
+    $("addMsg").textContent = data.success ? "추가 완료!" : "실패";
+    if (data.success) { $("addName").value = ""; $("addBirth").value = ""; $("addSkill").value = ""; loadMemberChecklist(); }
+  } catch (e) {
+    $("addMsg").textContent = "서버 오류";
+  }
+}
+
+async function loadMemberChecklist() {
+  // 로그인 API가 명단 전체를 안 주므로, 팀 배정용으로는 이름을 직접 입력하는 방식으로 대체
+  $("teamCheckList").innerHTML = `
+    <input id="teamNames" placeholder="참석자 이름 (쉼표로 구분, 예: 홍정현,김철수,이영희)">
+  `;
+}
+
+async function assignTeam() {
+  const namesRaw = $("teamNames") ? $("teamNames").value : "";
+  const names = namesRaw.split(",").map(s => s.trim()).filter(s => s.length > 0);
+  const password = prompt("관리자 비밀번호를 입력하세요");
+  if (!password) return;
+  try {
+    const res = await fetch(API + "/team/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, names })
+    });
+    const data = await res.json();
+    $("teamResult").innerHTML = `
+      <div class="row"><span>A팀</span><span>${(data.teamA || []).join(", ")}</span></div>
+      <div class="row"><span>B팀</span><span>${(data.teamB || []).join(", ")}</span></div>
+    `;
+  } catch (e) {
+    $("teamResult").innerHTML = '<div class="center">배정 실패</div>';
+  }
+}
+</script>
+</body>
+</html>
