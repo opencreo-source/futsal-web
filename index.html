@@ -190,6 +190,7 @@
 <script>
 const API = "https://futsal-server-huxw.onrender.com";
 let currentUser = null;
+let adminPassword = null;
 
 function $(id) { return document.getElementById(id); }
 
@@ -210,6 +211,27 @@ async function doLogin() {
     }
     currentUser = data;
     $("loginMsg").textContent = "";
+
+    if (currentUser.isAdmin) {
+      const pw = prompt("관리자님이시네요! 관리자 비밀번호를 입력해주세요 (이후엔 다시 묻지 않아요)");
+      if (pw) {
+        const verifyRes = await fetch(API + "/admin/verify", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ password: pw })
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData.success) {
+          adminPassword = pw;
+        } else {
+          alert("비밀번호가 틀렸습니다. 일반 회원으로 로그인됩니다.");
+          currentUser.isAdmin = false;
+        }
+      } else {
+        currentUser.isAdmin = false;
+      }
+    }
+
     showMain();
   } catch (e) {
     $("loginMsg").textContent = "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.";
@@ -218,6 +240,7 @@ async function doLogin() {
 
 function logout() {
   currentUser = null;
+  adminPassword = null;
   $("mainView").classList.add("hidden");
   $("loginView").classList.remove("hidden");
   $("loginName").value = "";
@@ -285,8 +308,8 @@ async function loadMvp() {
 async function addMvp() {
   const year = parseInt($("mvpYear").value.trim());
   const name = $("mvpName").value.trim();
-  const password = prompt("관리자 비밀번호를 입력하세요");
-  if (!password) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
   try {
     const res = await fetch(API + "/mvp/add", {
       method: "POST",
@@ -320,8 +343,8 @@ async function loadVideos() {
 async function addVideo() {
   const date = $("videoDate").value.trim();
   const url = $("videoUrl").value.trim();
-  const password = prompt("관리자 비밀번호를 입력하세요");
-  if (!password) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
   try {
     const res = await fetch(API + "/videos/add", {
       method: "POST",
@@ -339,8 +362,8 @@ async function addVideo() {
 async function updatePoints() {
   const name = $("ptName").value.trim();
   const points = parseInt($("ptValue").value.trim());
-  const password = prompt("관리자 비밀번호를 입력하세요");
-  if (!password) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
   try {
     const res = await fetch(API + "/member/points", {
       method: "POST",
@@ -358,8 +381,8 @@ async function addMember() {
   const name = $("addName").value.trim();
   const birthdate = $("addBirth").value.trim();
   const skillLevel = parseInt($("addSkill").value.trim());
-  const password = prompt("관리자 비밀번호를 입력하세요");
-  if (!password) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
   try {
     const res = await fetch(API + "/member/add", {
       method: "POST",
@@ -378,8 +401,8 @@ async function addMatch() {
   const date = $("matchDate").value.trim();
   const time = $("matchTime").value.trim();
   const location = $("matchLocation").value.trim();
-  const password = prompt("관리자 비밀번호를 입력하세요");
-  if (!password) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
   try {
     const res = await fetch(API + "/match/add", {
       method: "POST",
@@ -401,8 +424,8 @@ async function updateMember() {
   const name = $("editName").value.trim();
   const birthdate = $("editBirth").value.trim();
   const skillRaw = $("editSkill").value.trim();
-  const password = prompt("관리자 비밀번호를 입력하세요");
-  if (!password) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
 
   const payload = { password, name };
   if (birthdate) payload.birthdate = birthdate;
@@ -426,8 +449,8 @@ async function deleteMember() {
   const name = $("delName").value.trim();
   if (!name) return;
   if (!confirm(name + "님을 정말 삭제하시겠습니까?")) return;
-  const password = prompt("관리자 비밀번호를 입력하세요");
-  if (!password) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
   try {
     const res = await fetch(API + "/member/delete", {
       method: "POST",
@@ -452,8 +475,8 @@ async function loadMemberChecklist() {
 async function assignTeam() {
   const namesRaw = $("teamNames") ? $("teamNames").value : "";
   const names = namesRaw.split(",").map(s => s.trim()).filter(s => s.length > 0);
-  const password = prompt("관리자 비밀번호를 입력하세요");
-  if (!password) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
   try {
     const res = await fetch(API + "/team/assign", {
       method: "POST",
