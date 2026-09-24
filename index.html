@@ -205,7 +205,7 @@ function showMain() {
   $("userCard").innerHTML = `
     <div class="row"><span>이름</span><span>${currentUser.name}${currentUser.isAdmin ? ' <span class="chip">관리자</span>' : ''}</span></div>
     <div class="row"><span>내 포인트</span><span>${currentUser.points}</span></div>
-    <div class="row"><span>실력 레벨</span><span>${currentUser.skillLevel}</span></div>
+    ${currentUser.isAdmin ? `<div class="row"><span>실력 레벨</span><span>${currentUser.skillLevel}</span></div>` : ''}
   `;
   document.querySelectorAll(".admin-only").forEach(el => {
     if (currentUser.isAdmin) el.classList.remove("hidden");
