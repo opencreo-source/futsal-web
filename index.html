@@ -292,7 +292,7 @@ const tabLabels = {
 
 function buildTabs() {
   const order = currentUser.isAdmin
-    ? ["notice", "team", "members", "match", "mvp", "video"]
+    ? ["match", "mvp", "video", "notice", "team", "members"]
     : ["match", "mvp", "video", "notice"];
 
   const bar = $("tabsBar");
