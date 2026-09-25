@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OMT</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0f1720">
 <style>
   :root {
     --bg: #0f1720;
@@ -631,6 +635,10 @@ async function loadMemberChecklist() {
   $("teamCheckList").innerHTML = `
     <input id="teamNames" placeholder="참석자 이름 (쉼표로 구분, 예: 홍정현,김철수,이영희)">
   `;
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 async function assignTeam() {
