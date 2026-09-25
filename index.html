@@ -157,6 +157,12 @@
 
     <div id="tab-members" class="tabcontent hidden">
       <div class="card">
+        <h2>전체 회원 목록 (포인트순)</h2>
+        <button id="memberListToggleBtn" onclick="toggleMemberList()">조회하기</button>
+        <div id="memberListView" class="hidden" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
         <h2>회원 포인트 수정</h2>
         <input id="ptName" placeholder="회원 이름">
         <input id="ptValue" placeholder="예: +4, -2, 초기화는 0000">
@@ -486,7 +492,7 @@ async function updatePoints() {
     });
     const data = await res.json();
     $("ptMsg").textContent = data.success ? "수정 완료!" : "실패: " + (data.message || "");
-    if (data.success) $("ptValue").value = "";
+    if (data.success) { $("ptValue").value = ""; refreshMemberListIfVisible(); }
   } catch (e) {
     $("ptMsg").textContent = "서버 오류";
   }
@@ -506,7 +512,7 @@ async function addMember() {
     });
     const data = await res.json();
     $("addMsg").textContent = data.success ? "추가 완료!" : "실패";
-    if (data.success) { $("addName").value = ""; $("addBirth").value = ""; $("addSkill").value = ""; loadMemberChecklist(); }
+    if (data.success) { $("addName").value = ""; $("addBirth").value = ""; $("addSkill").value = ""; loadMemberChecklist(); refreshMemberListIfVisible(); }
   } catch (e) {
     $("addMsg").textContent = "서버 오류";
   }
@@ -554,7 +560,7 @@ async function updateMember() {
     });
     const data = await res.json();
     $("editMsg").textContent = data.success ? "수정 완료!" : "실패: 회원명/비밀번호 확인";
-    if (data.success) { $("editName").value = ""; $("editBirth").value = ""; $("editSkill").value = ""; }
+    if (data.success) { $("editName").value = ""; $("editBirth").value = ""; $("editSkill").value = ""; refreshMemberListIfVisible(); }
   } catch (e) {
     $("editMsg").textContent = "서버 오류";
   }
@@ -574,10 +580,50 @@ async function deleteMember() {
     });
     const data = await res.json();
     $("delMsg").textContent = data.success ? "삭제 완료!" : "실패: 회원명/비밀번호 확인";
-    if (data.success) { $("delName").value = ""; }
+    if (data.success) { $("delName").value = ""; loadMemberChecklist(); refreshMemberListIfVisible(); }
   } catch (e) {
     $("delMsg").textContent = "서버 오류";
   }
+}
+
+async function fetchMemberList() {
+  const password = adminPassword;
+  if (!password) return;
+  try {
+    const res = await fetch(API + "/member/list", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (!data.members || data.members.length === 0) {
+      $("memberListView").innerHTML = '<div class="center">회원이 없습니다</div>';
+      return;
+    }
+    $("memberListView").innerHTML = data.members.map(m =>
+      `<div class="row"><span>${m.name}</span><span>레벨 ${m.skillLevel} · ${m.points}점</span></div>`
+    ).join("");
+  } catch (e) {
+    $("memberListView").innerHTML = '<div class="center">불러오기 실패</div>';
+  }
+}
+
+async function toggleMemberList() {
+  const view = $("memberListView");
+  const btn = $("memberListToggleBtn");
+  if (!view.classList.contains("hidden")) {
+    view.classList.add("hidden");
+    btn.textContent = "조회하기";
+    return;
+  }
+  btn.textContent = "불러오는 중...";
+  await fetchMemberList();
+  view.classList.remove("hidden");
+  btn.textContent = "숨기기";
+}
+
+function refreshMemberListIfVisible() {
+  if (!$("memberListView").classList.contains("hidden")) fetchMemberList();
 }
 
 async function loadMemberChecklist() {
