@@ -36,7 +36,7 @@
     padding: 16px;
     margin-bottom: 14px;
   }
-  input, select {
+  input, select, textarea {
     width: 100%;
     padding: 12px;
     margin-bottom: 10px;
@@ -45,7 +45,14 @@
     background: #10181f;
     color: var(--text);
     font-size: 15px;
+    font-family: inherit;
   }
+  textarea { resize: vertical; min-height: 90px; }
+  .notice-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .notice-item:last-child { border-bottom: none; }
+  .notice-text { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+  .notice-date { font-size: 12px; color: var(--sub); margin-top: 4px; display: block; }
+  .notice-item button.danger { margin-top: 8px; padding: 8px; font-size: 13px; }
   button {
     width: 100%;
     padding: 12px;
@@ -93,25 +100,22 @@
     <h1>⚽ OMT</h1>
     <div class="card" id="userCard"></div>
 
-    <div class="tabs">
-      <div class="tab active" data-tab="match">다음 매치</div>
-      <div class="tab" data-tab="mvp">명예의 전당</div>
-      <div class="tab" data-tab="video">경기 영상</div>
-      <div class="tab admin-only hidden" data-tab="members">회원관리</div>
-      <div class="tab admin-only hidden" data-tab="team">팀 매칭</div>
-    </div>
+    <div class="tabs" id="tabsBar"></div>
 
-    <div id="tab-match" class="tabcontent">
+    <div id="tab-notice" class="tabcontent hidden">
       <div class="card">
         <h2>📢 공지사항</h2>
         <div id="noticeList">불러오는 중...</div>
       </div>
       <div class="card admin-only hidden">
         <h2>공지 작성</h2>
-        <input id="noticeContent" placeholder="공지 내용 입력">
+        <textarea id="noticeContent" placeholder="공지 내용 입력 (줄바꿈 가능)"></textarea>
         <button onclick="addNotice()">등록</button>
         <div class="msg" id="noticeMsg"></div>
       </div>
+    </div>
+
+    <div id="tab-match" class="tabcontent">
       <div class="card" id="matchCard">불러오는 중...</div>
       <div class="card admin-only hidden">
         <h2>다음 매치 등록</h2>
@@ -272,6 +276,8 @@ function showMain() {
     if (currentUser.isAdmin) el.classList.remove("hidden");
     else el.classList.add("hidden");
   });
+
+  buildTabs();
   loadNextMatch();
   loadMvp();
   loadVideos();
@@ -279,15 +285,33 @@ function showMain() {
   if (currentUser.isAdmin) loadMemberChecklist();
 }
 
-// 탭 전환
-document.querySelectorAll(".tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-    document.querySelectorAll(".tabcontent").forEach(c => c.classList.add("hidden"));
-    $("tab-" + tab.dataset.tab).classList.remove("hidden");
+const tabLabels = {
+  notice: "공지사항", match: "다음 매치", mvp: "명예의 전당",
+  video: "경기 영상", team: "팀 매칭", members: "회원관리"
+};
+
+function buildTabs() {
+  const order = currentUser.isAdmin
+    ? ["notice", "team", "members", "match", "mvp", "video"]
+    : ["match", "mvp", "video", "notice"];
+
+  const bar = $("tabsBar");
+  bar.innerHTML = order.map((key, i) =>
+    `<div class="tab${i === 0 ? ' active' : ''}" data-tab="${key}">${tabLabels[key]}</div>`
+  ).join("");
+
+  document.querySelectorAll(".tabcontent").forEach(c => c.classList.add("hidden"));
+  $("tab-" + order[0]).classList.remove("hidden");
+
+  bar.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      bar.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      document.querySelectorAll(".tabcontent").forEach(c => c.classList.add("hidden"));
+      $("tab-" + tab.dataset.tab).classList.remove("hidden");
+    });
   });
-});
+}
 
 async function loadNotices() {
   try {
@@ -297,11 +321,33 @@ async function loadNotices() {
       $("noticeList").innerHTML = '<div class="center">등록된 공지가 없습니다</div>';
       return;
     }
-    $("noticeList").innerHTML = data.notices.map(n =>
-      `<div class="row"><span>${n.content}</span><span class="chip">${n.date}</span></div>`
-    ).join("");
+    $("noticeList").innerHTML = data.notices.map(n => `
+      <div class="notice-item">
+        <div class="notice-text">${n.content}</div>
+        <span class="notice-date">${n.date}</span>
+        ${currentUser && currentUser.isAdmin ? `<button class="danger" onclick="deleteNotice(${n.id})">삭제</button>` : ''}
+      </div>
+    `).join("");
   } catch (e) {
     $("noticeList").innerHTML = '<div class="center">불러오기 실패</div>';
+  }
+}
+
+async function deleteNotice(id) {
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
+  if (!confirm("이 공지를 삭제하시겠습니까?")) return;
+  try {
+    const res = await fetch(API + "/notices/delete", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ password, id })
+    });
+    const data = await res.json();
+    if (data.success) loadNotices();
+    else alert("삭제 실패");
+  } catch (e) {
+    alert("서버 오류");
   }
 }
 
