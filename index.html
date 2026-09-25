@@ -159,7 +159,7 @@
       <div class="card">
         <h2>회원 포인트 수정</h2>
         <input id="ptName" placeholder="회원 이름">
-        <input id="ptValue" placeholder="새 포인트">
+        <input id="ptValue" placeholder="예: +4, -2, 초기화는 0000">
         <button onclick="updatePoints()">수정</button>
         <div class="msg" id="ptMsg"></div>
       </div>
@@ -463,17 +463,30 @@ async function addVideo() {
 
 async function updatePoints() {
   const name = $("ptName").value.trim();
-  const points = parseInt($("ptValue").value.trim());
+  const raw = $("ptValue").value.trim();
   const password = adminPassword;
   if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
+
+  let payload = { password, name };
+  if (raw === "0000") {
+    payload.mode = "reset";
+  } else if (/^[+-]\d+$/.test(raw)) {
+    payload.mode = "delta";
+    payload.value = parseInt(raw);
+  } else {
+    $("ptMsg").textContent = "+4, -2 처럼 입력하거나 초기화는 0000을 입력하세요.";
+    return;
+  }
+
   try {
     const res = await fetch(API + "/member/points", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ password, name, points })
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
     $("ptMsg").textContent = data.success ? "수정 완료!" : "실패: " + (data.message || "");
+    if (data.success) $("ptValue").value = "";
   } catch (e) {
     $("ptMsg").textContent = "서버 오류";
   }
