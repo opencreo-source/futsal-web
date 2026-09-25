@@ -102,6 +102,16 @@
     </div>
 
     <div id="tab-match" class="tabcontent">
+      <div class="card">
+        <h2>📢 공지사항</h2>
+        <div id="noticeList">불러오는 중...</div>
+      </div>
+      <div class="card admin-only hidden">
+        <h2>공지 작성</h2>
+        <input id="noticeContent" placeholder="공지 내용 입력">
+        <button onclick="addNotice()">등록</button>
+        <div class="msg" id="noticeMsg"></div>
+      </div>
       <div class="card" id="matchCard">불러오는 중...</div>
       <div class="card admin-only hidden">
         <h2>다음 매치 등록</h2>
@@ -265,6 +275,7 @@ function showMain() {
   loadNextMatch();
   loadMvp();
   loadVideos();
+  loadNotices();
   if (currentUser.isAdmin) loadMemberChecklist();
 }
 
@@ -277,6 +288,47 @@ document.querySelectorAll(".tab").forEach(tab => {
     $("tab-" + tab.dataset.tab).classList.remove("hidden");
   });
 });
+
+async function loadNotices() {
+  try {
+    const res = await fetch(API + "/notices");
+    const data = await res.json();
+    if (!data.notices || data.notices.length === 0) {
+      $("noticeList").innerHTML = '<div class="center">등록된 공지가 없습니다</div>';
+      return;
+    }
+    $("noticeList").innerHTML = data.notices.map(n =>
+      `<div class="row"><span>${n.content}</span><span class="chip">${n.date}</span></div>`
+    ).join("");
+  } catch (e) {
+    $("noticeList").innerHTML = '<div class="center">불러오기 실패</div>';
+  }
+}
+
+async function addNotice() {
+  const content = $("noticeContent").value.trim();
+  if (!content) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
+
+  const today = new Date();
+  const date = today.getFullYear() + "-" +
+    String(today.getMonth() + 1).padStart(2, "0") + "-" +
+    String(today.getDate()).padStart(2, "0");
+
+  try {
+    const res = await fetch(API + "/notices/add", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ password, date, content })
+    });
+    const data = await res.json();
+    $("noticeMsg").textContent = data.success ? "등록 완료!" : "실패";
+    if (data.success) { $("noticeContent").value = ""; loadNotices(); }
+  } catch (e) {
+    $("noticeMsg").textContent = "서버 오류";
+  }
+}
 
 async function loadNextMatch() {
   try {
