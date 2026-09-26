@@ -57,13 +57,19 @@
   .notice-text { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
   .notice-date { font-size: 12px; color: var(--sub); margin-top: 4px; display: block; }
   .notice-item button.danger { margin-top: 8px; padding: 8px; font-size: 13px; }
-  .gallery-grid { display: flex; flex-direction: column; gap: 14px; }
-  .gallery-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-  .gallery-item img { width: 100%; display: block; }
-  .gallery-actions { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; }
-  .like-btn { background: none; border: none; color: var(--text); font-size: 15px; width: auto; padding: 6px 10px; cursor: pointer; margin: 0; }
+  .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .gallery-thumb { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 4px; cursor: pointer; background: var(--card); }
+  .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .like-btn { background: none; border: none; color: var(--text); font-size: 16px; width: auto; padding: 6px 10px; cursor: pointer; margin: 0; }
+  .like-btn.liked { color: var(--danger); }
   .gallery-side { display: flex; gap: 6px; }
   .dl-btn, .gallery-del-btn { background: none; border: 1px solid var(--border); color: var(--sub); font-size: 13px; width: auto; padding: 6px 10px; border-radius: 8px; cursor: pointer; text-decoration: none; margin: 0; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; padding-top: calc(20px + env(safe-area-inset-top, 0px)); }
+  .modal.hidden { display: none; }
+  .modal-inner { max-width: 480px; width: 100%; background: var(--card); border-radius: 14px; overflow: hidden; position: relative; }
+  .modal-inner img { width: 100%; display: block; max-height: 65vh; object-fit: contain; background: #000; }
+  .modal-close { position: absolute; top: 10px; right: 12px; color: #fff; font-size: 22px; background: rgba(0,0,0,0.5); border: none; cursor: pointer; width: 34px; height: 34px; border-radius: 50%; z-index: 2; padding: 0; }
+  .modal-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; }
   button {
     width: 100%;
     padding: 12px;
@@ -230,6 +236,20 @@
   </div>
 </div>
 
+<div id="photoModal" class="modal hidden" onclick="if(event.target===this) closeModal()">
+  <div class="modal-inner">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <img id="modalImg">
+    <div class="modal-bar">
+      <button id="modalLikeBtn" class="like-btn" onclick="toggleLike()">🤍 0</button>
+      <div class="gallery-side">
+        <a id="modalDownload" class="dl-btn" href="#" download target="_blank">다운로드</a>
+        <button id="modalDelete" class="gallery-del-btn hidden" onclick="deleteCurrentPhoto()">삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = "https://futsal-server-huxw.onrender.com";
 let currentUser = null;
@@ -341,41 +361,93 @@ function buildTabs() {
   });
 }
 
+let currentGalleryItems = [];
+let openPhotoId = null;
+
+function getLikedSet() {
+  try { return new Set(JSON.parse(localStorage.getItem("likedPhotos") || "[]")); }
+  catch (e) { return new Set(); }
+}
+function saveLikedSet(set) {
+  localStorage.setItem("likedPhotos", JSON.stringify([...set]));
+}
+
 async function loadGallery() {
   try {
     const res = await fetch(API + "/gallery");
     const data = await res.json();
-    if (!data.items || data.items.length === 0) {
+    currentGalleryItems = data.items || [];
+    if (currentGalleryItems.length === 0) {
       $("galleryGrid").innerHTML = '<div class="center">등록된 사진이 없습니다</div>';
       return;
     }
-    $("galleryGrid").innerHTML = data.items.map(it => `
-      <div class="gallery-item">
-        <img src="${it.url}" loading="lazy">
-        <div class="gallery-actions">
-          <button class="like-btn" onclick="likePhoto(${it.id}, this)">❤ ${it.likes}</button>
-          <div class="gallery-side">
-            <a class="dl-btn" href="${it.url}" download target="_blank">다운로드</a>
-            ${currentUser && currentUser.isAdmin ? `<button class="gallery-del-btn" onclick="deleteGalleryPhoto(${it.id})">삭제</button>` : ''}
-          </div>
-        </div>
-      </div>
-    `).join("");
+    $("galleryGrid").innerHTML = currentGalleryItems.map(it =>
+      `<div class="gallery-thumb" onclick="openPhoto(${it.id})"><img src="${it.url}" loading="lazy"></div>`
+    ).join("");
   } catch (e) {
     $("galleryGrid").innerHTML = '<div class="center">불러오기 실패</div>';
   }
 }
 
-async function likePhoto(id, btn) {
+function openPhoto(id) {
+  const item = currentGalleryItems.find(i => i.id === id);
+  if (!item) return;
+  openPhotoId = id;
+  const liked = getLikedSet().has(id);
+  $("modalImg").src = item.url;
+  $("modalLikeBtn").textContent = (liked ? "❤ " : "🤍 ") + item.likes;
+  $("modalLikeBtn").classList.toggle("liked", liked);
+  $("modalDownload").href = item.url;
+  $("modalDelete").classList.toggle("hidden", !(currentUser && currentUser.isAdmin));
+  $("photoModal").classList.remove("hidden");
+}
+
+function closeModal() {
+  $("photoModal").classList.add("hidden");
+  openPhotoId = null;
+}
+
+async function toggleLike() {
+  if (openPhotoId === null) return;
+  const id = openPhotoId;
+  const likedSet = getLikedSet();
+  const isLiked = likedSet.has(id);
+  const delta = isLiked ? -1 : 1;
   try {
     const res = await fetch(API + "/gallery/like", {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id, delta })
     });
     const data = await res.json();
-    if (data.success) btn.textContent = "❤ " + data.likes;
+    if (data.success) {
+      if (isLiked) likedSet.delete(id); else likedSet.add(id);
+      saveLikedSet(likedSet);
+      const item = currentGalleryItems.find(i => i.id === id);
+      if (item) item.likes = data.likes;
+      $("modalLikeBtn").textContent = (!isLiked ? "❤ " : "🤍 ") + data.likes;
+      $("modalLikeBtn").classList.toggle("liked", !isLiked);
+    }
   } catch (e) {}
+}
+
+async function deleteCurrentPhoto() {
+  if (openPhotoId === null) return;
+  if (!confirm("이 사진을 삭제하시겠습니까?")) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
+  try {
+    const res = await fetch(API + "/gallery/delete", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ password, id: openPhotoId })
+    });
+    const data = await res.json();
+    if (data.success) { closeModal(); loadGallery(); }
+    else alert("삭제 실패");
+  } catch (e) {
+    alert("서버 오류");
+  }
 }
 
 async function uploadGalleryPhoto() {
@@ -403,24 +475,6 @@ async function uploadGalleryPhoto() {
     }
   };
   reader.readAsDataURL(file);
-}
-
-async function deleteGalleryPhoto(id) {
-  if (!confirm("이 사진을 삭제하시겠습니까?")) return;
-  const password = adminPassword;
-  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
-  try {
-    const res = await fetch(API + "/gallery/delete", {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ password, id })
-    });
-    const data = await res.json();
-    if (data.success) loadGallery();
-    else alert("삭제 실패");
-  } catch (e) {
-    alert("서버 오류");
-  }
 }
 
 async function loadNotices() {
