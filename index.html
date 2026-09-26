@@ -57,6 +57,13 @@
   .notice-text { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
   .notice-date { font-size: 12px; color: var(--sub); margin-top: 4px; display: block; }
   .notice-item button.danger { margin-top: 8px; padding: 8px; font-size: 13px; }
+  .gallery-grid { display: flex; flex-direction: column; gap: 14px; }
+  .gallery-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .gallery-item img { width: 100%; display: block; }
+  .gallery-actions { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; }
+  .like-btn { background: none; border: none; color: var(--text); font-size: 15px; width: auto; padding: 6px 10px; cursor: pointer; margin: 0; }
+  .gallery-side { display: flex; gap: 6px; }
+  .dl-btn, .gallery-del-btn { background: none; border: 1px solid var(--border); color: var(--sub); font-size: 13px; width: auto; padding: 6px 10px; border-radius: 8px; cursor: pointer; text-decoration: none; margin: 0; }
   button {
     width: 100%;
     padding: 12px;
@@ -105,6 +112,16 @@
     <div class="card" id="userCard"></div>
 
     <div class="tabs" id="tabsBar"></div>
+
+    <div id="tab-gallery" class="tabcontent hidden">
+      <div class="card admin-only hidden">
+        <h2>사진 업로드</h2>
+        <input type="file" id="galleryFile" accept="image/*">
+        <button onclick="uploadGalleryPhoto()">업로드</button>
+        <div class="msg" id="galleryMsg"></div>
+      </div>
+      <div id="galleryGrid" class="gallery-grid">불러오는 중...</div>
+    </div>
 
     <div id="tab-notice" class="tabcontent hidden">
       <div class="card">
@@ -292,18 +309,19 @@ function showMain() {
   loadMvp();
   loadVideos();
   loadNotices();
+  loadGallery();
   if (currentUser.isAdmin) loadMemberChecklist();
 }
 
 const tabLabels = {
   notice: "공지사항", match: "다음 매치", mvp: "명예의 전당",
-  video: "경기 영상", team: "팀 매칭", members: "회원관리"
+  video: "경기 영상", gallery: "갤러리", team: "팀 매칭", members: "회원관리"
 };
 
 function buildTabs() {
   const order = currentUser.isAdmin
-    ? ["match", "mvp", "video", "notice", "team", "members"]
-    : ["match", "mvp", "video", "notice"];
+    ? ["match", "mvp", "video", "gallery", "notice", "team", "members"]
+    : ["match", "mvp", "video", "gallery", "notice"];
 
   const bar = $("tabsBar");
   bar.innerHTML = order.map((key, i) =>
@@ -321,6 +339,88 @@ function buildTabs() {
       $("tab-" + tab.dataset.tab).classList.remove("hidden");
     });
   });
+}
+
+async function loadGallery() {
+  try {
+    const res = await fetch(API + "/gallery");
+    const data = await res.json();
+    if (!data.items || data.items.length === 0) {
+      $("galleryGrid").innerHTML = '<div class="center">등록된 사진이 없습니다</div>';
+      return;
+    }
+    $("galleryGrid").innerHTML = data.items.map(it => `
+      <div class="gallery-item">
+        <img src="${it.url}" loading="lazy">
+        <div class="gallery-actions">
+          <button class="like-btn" onclick="likePhoto(${it.id}, this)">❤ ${it.likes}</button>
+          <div class="gallery-side">
+            <a class="dl-btn" href="${it.url}" download target="_blank">다운로드</a>
+            ${currentUser && currentUser.isAdmin ? `<button class="gallery-del-btn" onclick="deleteGalleryPhoto(${it.id})">삭제</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join("");
+  } catch (e) {
+    $("galleryGrid").innerHTML = '<div class="center">불러오기 실패</div>';
+  }
+}
+
+async function likePhoto(id, btn) {
+  try {
+    const res = await fetch(API + "/gallery/like", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ id })
+    });
+    const data = await res.json();
+    if (data.success) btn.textContent = "❤ " + data.likes;
+  } catch (e) {}
+}
+
+async function uploadGalleryPhoto() {
+  const fileInput = $("galleryFile");
+  const file = fileInput.files[0];
+  if (!file) { $("galleryMsg").textContent = "사진을 선택하세요."; return; }
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
+
+  $("galleryMsg").textContent = "업로드 중...";
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64 = reader.result.split(",")[1];
+    try {
+      const res = await fetch(API + "/gallery/add", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ password, imageBase64: base64, mimeType: file.type })
+      });
+      const data = await res.json();
+      $("galleryMsg").textContent = data.success ? "업로드 완료!" : "실패";
+      if (data.success) { fileInput.value = ""; loadGallery(); }
+    } catch (e) {
+      $("galleryMsg").textContent = "서버 오류";
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function deleteGalleryPhoto(id) {
+  if (!confirm("이 사진을 삭제하시겠습니까?")) return;
+  const password = adminPassword;
+  if (!password) { alert("관리자 인증이 필요합니다. 다시 로그인해주세요."); return; }
+  try {
+    const res = await fetch(API + "/gallery/delete", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ password, id })
+    });
+    const data = await res.json();
+    if (data.success) loadGallery();
+    else alert("삭제 실패");
+  } catch (e) {
+    alert("서버 오류");
+  }
 }
 
 async function loadNotices() {
